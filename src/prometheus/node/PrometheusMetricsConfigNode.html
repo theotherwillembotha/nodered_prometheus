@@ -1,0 +1,24 @@
+<script type="text/javascript" template-section="onCompose">
+    node
+        .addDefault("name", { value:"Prometheus Metrics", required:true})
+        .setPaletteLabel("Prometheus Metrics Config")
+        .setLabel(function() { return this.name; })
+</script>
+
+<script type="text/html" template-section="onIncludeEditForm">
+    <div id="PrometheusMetricsConfig">
+        <div class="form-row">
+            <label class="towb_editorlabel" for="node-config-input-name"><i class="fa fa-font"></i> Name</label>
+            <input type="text" id="node-config-input-name" />
+        </div>
+    </div>
+</script>
+
+<script type="text/markdown" template-section="onIncludeDocumentation">
+### Prometheus Metrics Config
+Configures a Prometheus metrics scrape endpoint. A Prometheus server can scrape this endpoint to collect metrics.
+
+: *name* (string) : A descriptive name for this metrics provider.
+: *path* (string) : The HTTP path Prometheus will scrape (configured via the Webhook section).
+: *port* (number) : The port the scrape endpoint listens on (configured via the Webhook section).
+</script>

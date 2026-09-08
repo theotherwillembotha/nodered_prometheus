@@ -1,0 +1,57 @@
+{
+  "name": "@theotherwillembotha/node-red-prometheus",
+  "version": "0.2.0",
+  "description": "Prometheus metrics provider plugin for node-red-plugincore.",
+  "author": "Willem Botha (@theotherwillembotha)",
+  "license": "ISC",
+  "keywords": [
+    "node-red",
+    "metrics",
+    "prometheus"
+  ],
+  "main": "./build/index.js",
+  "exports": "./build/index.js",
+  "types": "./build/index.d.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepare": "npm run build",
+    "clean": "rm -rf ./build && rm -rf ./resources",
+    "build": "npm run clean && tsc && npm run generate-nodes && npm run bundle && npm run copy-files",
+    "generate-nodes": "node build/GenerateNodes.js",
+    "bundle": "node esbuild.js",
+    "copy-files": "cp -r ./icons ./build 2>/dev/null || true && mkdir -p ./resources && cp -r ./build/resources/. ./resources/ 2>/dev/null || true"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/theotherwillembotha/nodered_prometheus.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18",
+    "nodered": ">=4.0.0"
+  },
+  "peerDependencies": {
+    "@theotherwillembotha/node-red-plugincore": "file:../nodered_plugincore"
+  },
+  "devDependencies": {
+    "@theotherwillembotha/node-red-plugincore": "file:../nodered_plugincore",
+    "@types/deep-equal": "^1.0.4",
+    "@types/node": "^26.1.1",
+    "@types/node-red": "~1.3.5",
+    "deep-equal": "^2.2.3",
+    "esbuild": "^0.24.0",
+    "prom-client": "^15.1.3",
+    "typescript": "^5.8.3"
+  },
+  "node-red": {
+    "version": ">=4.0.0",
+    "nodes": {
+      "prometheus": "./build/Nodes.js"
+    },
+    "plugins": {
+      "prometheus": "./build/Plugins.js"
+    }
+  }
+}
