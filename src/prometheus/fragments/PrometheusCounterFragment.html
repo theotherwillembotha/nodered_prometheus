@@ -1,0 +1,28 @@
+<script type="application/json" fragment-section="metaData">
+{ "label": "Prometheus Counter" }
+</script>
+
+<script type="text/html" fragment-section="onForm">
+    <div class="form-row">
+        <label class="towb_editorlabel" for="fragment-metricDescription"><i class="fa fa-info-circle"></i> Description</label>
+        <input class="towb_editorfield" type="text" id="fragment-metricDescription" placeholder="Optional metric description" />
+    </div>
+</script>
+
+<script type="text/javascript" fragment-section="onLoad">
+    var $c = $(container);
+    $c.find("#fragment-metricDescription").val(config.metricDescription || "");
+</script>
+
+<script type="text/javascript" fragment-section="onSave">
+    var $c = $(container);
+    return {
+        metricDescription: $c.find("#fragment-metricDescription").val()
+    };
+</script>
+
+<script type="text/javascript" fragment-section="onReplace">
+</script>
+
+<script type="text/javascript" fragment-section="onDestroy">
+</script>

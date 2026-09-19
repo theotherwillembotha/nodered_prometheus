@@ -1,6 +1,7 @@
 import {
     Metric,
     MetricCapability,
+    MetricConfig,
     MetricsConfig,
     MetricsContainer,
     CounterMetric, CounterMetricConfig, CounterCallback, CounterState,
@@ -10,12 +11,13 @@ import {
     BucketType,
     PercentileType,
     ManualPercentileConfig,
+    ConfigFragmentService,
 } from "@theotherwillembotha/node-red-plugincore";
 import type { BaseNode, BaseNodeConfig } from "@theotherwillembotha/node-red-plugincore";
 import type { Counter, Gauge, Histogram, HistogramConfiguration, Registry, Summary, SummaryConfiguration } from "prom-client";
 
 function getPromClient(): any { return require('prom-client'); }
-function getDeepEqual(): any  { return require('deep-equal'); }
+
 
 // ******************************************************* //
 //                   Counter                               //
@@ -26,12 +28,12 @@ export class PrometheusCounterMetric extends Metric<CounterMetricConfig> impleme
     private internalCounter: any;
     private subscribers: { [key: string]: CounterCallback } = {};
 
-    constructor(id: string, config: CounterMetricConfig, registry: Registry) {
+    constructor(id: string, config: CounterMetricConfig, registry: Registry, help?: string) {
         super(config);
         this.counter = new (getPromClient().Counter)({
             name:       id,
-            help:       config.metricdescription ?? config.metricname,
-            labelNames: Object.keys(this.labels()),
+            help:       help || config.description || config.metric,
+            labelNames: Metric.labelNames(),
             registers:  [registry]
         });
         this.counter.reset();
@@ -70,14 +72,14 @@ export class PrometheusGaugeMetric extends Metric<GaugeMetricConfig> implements 
     private gauge: any;
     private subscribers: { [key: string]: GaugeCallback } = {};
 
-    constructor(id: string, config: GaugeMetricConfig, registry: Registry) {
+    constructor(id: string, config: GaugeMetricConfig, registry: Registry, help?: string) {
         super(config);
         const labels = this.labels();
         this.gauge = new (getPromClient().Gauge)({
             name:       id,
-            help:       config.metricdescription ?? config.metricname,
+            help:       help || config.description || config.metric,
             registers:  [registry],
-            labelNames: Object.keys(labels),
+            labelNames: Metric.labelNames(),
             collect:    () => { this.gauge.labels(labels as {}).set(this.collector); }
         });
     }
@@ -120,13 +122,13 @@ export class PrometheusHistogramMetric extends Metric<HistogramMetricConfig> imp
     private histogram: Histogram;
     private subscribers: { [key: string]: HistogramCallback } = {};
 
-    constructor(id: string, config: HistogramMetricConfig, registry: Registry) {
+    constructor(id: string, config: HistogramMetricConfig, registry: Registry, help?: string) {
         super(config);
 
         const histogramConfig: HistogramConfiguration<string> = {
             name:       id,
-            help:       config.metricdescription ?? config.metricname,
-            labelNames: Object.keys(this.labels()),
+            help:       help || config.description || config.metric,
+            labelNames: Metric.labelNames(),
             registers:  [registry]
         };
 
@@ -151,6 +153,8 @@ export class PrometheusHistogramMetric extends Metric<HistogramMetricConfig> imp
             Object.values(this.subscribers).forEach(cb => cb(state));
         });
     }
+
+    public reset(): void { this.histogram.reset(); }
 
     public subscribe(node: BaseNode<BaseNodeConfig>, callback: HistogramCallback): void {
         this.subscribers[node.id()] = callback;
@@ -180,13 +184,13 @@ export class PrometheusSummaryMetric extends Metric<SummaryMetricConfig> impleme
     private summary: Summary;
     private subscribers: { [key: string]: SummaryCallback } = {};
 
-    constructor(id: string, config: SummaryMetricConfig, registry: Registry) {
+    constructor(id: string, config: SummaryMetricConfig, registry: Registry, help?: string) {
         super(config);
 
         const summaryConfig: SummaryConfiguration<string> = {
             name:       id,
-            help:       config.metricdescription ?? config.metricname,
-            labelNames: Object.keys(this.labels()),
+            help:       help || config.description || config.metric,
+            labelNames: Metric.labelNames(),
             registers:  [registry],
         };
 
@@ -206,6 +210,8 @@ export class PrometheusSummaryMetric extends Metric<SummaryMetricConfig> impleme
             Object.values(this.subscribers).forEach(cb => cb(state));
         });
     }
+
+    public reset(): void { this.summary.reset(); }
 
     public subscribe(node: BaseNode<BaseNodeConfig>, callback: SummaryCallback): void {
         this.subscribers[node.id()] = callback;
@@ -249,63 +255,128 @@ export class PrometheusMetricsContainer extends MetricsContainer {
         );
     }
 
-    public close(): void { this._registry.clear(); }
+    public close(): void {
+        this._registry.clear();
+        this.counters   = {};
+        this.gauges     = {};
+        this.histograms = {};
+        this.summaries  = {};
+    }
 
     public registry(): Registry { return this._registry; }
 
-    public counter(config: CounterMetricConfig): CounterMetric {
-        const id = `counter_${config.node.id}`;
-        let metric = this.counters[id];
-        if (metric) {
-            if (!getDeepEqual()(metric.config(), config)) {
-                this._registry.removeSingleMetric(id);
-                this.counters[id] = metric = new PrometheusCounterMetric(id, config, this._registry);
-            }
-        } else {
-            this.counters[id] = metric = new PrometheusCounterMetric(id, config, this._registry);
+    public counter(config: CounterMetricConfig, help?: string): CounterMetric {
+        const id = `counter_${config.id}`;
+        if (!this.counters[id]) {
+            this.counters[id] = new PrometheusCounterMetric(id, config, this._registry, help);
         }
-        return metric;
+        return this.counters[id];
     }
 
-    public gauge(config: GaugeMetricConfig): GaugeMetric {
-        const id = `gauge_${config.node.id}`;
-        let metric = this.gauges[id];
-        if (metric) {
-            if (!getDeepEqual()(metric.config(), config)) {
-                this._registry.removeSingleMetric(id);
-                this.gauges[id] = metric = new PrometheusGaugeMetric(id, config, this._registry);
-            }
-        } else {
-            this.gauges[id] = metric = new PrometheusGaugeMetric(id, config, this._registry);
+    public gauge(config: GaugeMetricConfig, help?: string): GaugeMetric {
+        const id = `gauge_${config.id}`;
+        if (!this.gauges[id]) {
+            this.gauges[id] = new PrometheusGaugeMetric(id, config, this._registry, help);
         }
-        return metric;
+        return this.gauges[id];
     }
 
-    public histogram(config: HistogramMetricConfig): HistogramMetric {
-        const id = `histogram_${config.node.id}`;
-        let metric = this.histograms[id];
-        if (metric) {
-            if (!getDeepEqual()(metric.config(), config)) {
-                this._registry.removeSingleMetric(id);
-                this.histograms[id] = metric = new PrometheusHistogramMetric(id, config, this._registry);
-            }
-        } else {
-            this.histograms[id] = metric = new PrometheusHistogramMetric(id, config, this._registry);
+    public histogram(config: HistogramMetricConfig, help?: string): HistogramMetric {
+        const id = `histogram_${config.id}`;
+        if (!this.histograms[id]) {
+            this.histograms[id] = new PrometheusHistogramMetric(id, config, this._registry, help);
         }
-        return metric;
+        return this.histograms[id];
     }
 
-    public summary(config: SummaryMetricConfig): SummaryMetric {
-        const id = `summary_${config.node.id}`;
-        let metric = this.summaries[id];
-        if (metric) {
-            if (!getDeepEqual()(metric.config(), config)) {
-                this._registry.removeSingleMetric(id);
-                this.summaries[id] = metric = new PrometheusSummaryMetric(id, config, this._registry);
-            }
-        } else {
-            this.summaries[id] = metric = new PrometheusSummaryMetric(id, config, this._registry);
+    public summary(config: SummaryMetricConfig, help?: string): SummaryMetric {
+        const id = `summary_${config.id}`;
+        if (!this.summaries[id]) {
+            this.summaries[id] = new PrometheusSummaryMetric(id, config, this._registry, help);
         }
-        return metric;
+        return this.summaries[id];
     }
+
+    public createTimer(metricConfig: MetricConfig, fragmentData: any): HistogramMetric | SummaryMetric {
+        const help = fragmentData.metricDescription || undefined;
+        const bucketConfig: any = {};
+
+        if (fragmentData.metricType === 'summary') {
+            const summaryConfig: SummaryMetricConfig = {
+                ...metricConfig,
+                type: "Summary",
+                percentileType:   fragmentData.percentileType || PercentileType.default,
+                percentileConfig: fragmentData.percentileType === PercentileType.manual
+                    ? { percentiles: (fragmentData.percentilesManual || "0.01, 0.1, 0.9, 0.99").split(",").map((s: string) => parseFloat(s.trim())) }
+                    : {},
+            };
+            return this.summary(summaryConfig, help);
+        }
+
+        // Default: histogram
+        switch (fragmentData.bucketType) {
+            case 'manual':
+                bucketConfig.intervals = (fragmentData.bucketsManual || "0.001, 0.01, 0.1, 1, 2, 5").split(",").map((s: string) => parseFloat(s.trim()));
+                break;
+            case 'linear':
+                bucketConfig.start    = parseFloat(fragmentData.linearStart    || "0");
+                bucketConfig.interval = parseFloat(fragmentData.linearInterval || "5");
+                bucketConfig.count    = parseInt(fragmentData.linearCount      || "10");
+                break;
+            case 'exponential':
+                bucketConfig.start  = parseFloat(fragmentData.expStart  || "1");
+                bucketConfig.factor = parseFloat(fragmentData.expFactor || "2");
+                bucketConfig.count  = parseInt(fragmentData.expCount   || "10");
+                break;
+        }
+
+        const histogramConfig: HistogramMetricConfig = {
+            ...metricConfig,
+            type: "Histogram",
+            buckettype:   (fragmentData.bucketType as BucketType) || BucketType.default,
+            bucketconfig: bucketConfig,
+        };
+        return this.histogram(histogramConfig, help);
+    }
+
+    public createCounter(metricConfig: MetricConfig, fragmentData: any): CounterMetric {
+        const help = fragmentData.metricDescription || undefined;
+        const counterConfig: CounterMetricConfig = { ...metricConfig };
+        return this.counter(counterConfig, help);
+    }
+
+    public createGauge(metricConfig: MetricConfig, fragmentData: any): GaugeMetric {
+        const help = fragmentData.metricDescription || undefined;
+        const gaugeConfig: GaugeMetricConfig = { ...metricConfig };
+        return this.gauge(gaugeConfig, help);
+    }
+
+    public static registerFragments(): void {
+        const timerHtml: string = require('../fragments/PrometheusTimerFragment.html');
+        ConfigFragmentService.registerFragment({
+            section: 'TimerMetricConfig',
+            providerType: 'PrometheusMetricsConfigNode',
+            html: timerHtml,
+        });
+
+        const counterHtml: string = require('../fragments/PrometheusCounterFragment.html');
+        ConfigFragmentService.registerFragment({
+            section: 'CounterMetricConfig',
+            providerType: 'PrometheusMetricsConfigNode',
+            html: counterHtml,
+        });
+
+        const gaugeHtml: string = require('../fragments/PrometheusGaugeFragment.html');
+        ConfigFragmentService.registerFragment({
+            section: 'GaugeMetricConfig',
+            providerType: 'PrometheusMetricsConfigNode',
+            html: gaugeHtml,
+        });
+    }
+}
+
+try {
+    PrometheusMetricsContainer.registerFragments();
+} catch(_e) {
+    // Expected during build time — esbuild will inline the HTML at bundle step.
 }

@@ -17,6 +17,8 @@ const sharedConfig = {
     target: 'node18',
     external,
     format: 'cjs',
+    // Inline .html fragment files as strings at build time.
+    loader: { '.html': 'text' },
     // Nodes.js does require("@theotherwillembotha/node-red-prometheus") (self-reference).
     // Alias it to the local build output so esbuild can bundle it inline.
     alias: {

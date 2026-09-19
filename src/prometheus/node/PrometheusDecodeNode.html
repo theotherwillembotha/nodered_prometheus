@@ -1,0 +1,118 @@
+<div template-section="onIncludeOnce">
+<style>
+    .node_label_white { fill: white; }
+</style>
+</div>
+
+<script type="text/javascript" template-section="onCompose">
+    node
+        .addDefault("name",           { value: "Prometheus Decode", required: true })
+        .addDefault("inputpath",      { value: "payload", required: true })
+        .addDefault("inputpath_type", { value: "msg", required: false })
+        .addDefault("outputpath",     { value: "payload", required: true })
+        .setIcon("prometheus.png")
+        .setPaletteLabel("Prometheus Decode")
+        .setLabelStyle("node_label_white")
+        .setLabel(function() { return this.name; })
+        .setColor("#E6522C")
+        .setInput("input")
+        .addOutputs("output")
+</script>
+
+<script type="text/javascript" template-section="onIncludeEditPrepare">
+{
+    $("#node-input-inputpath").typedInput({
+        default: "msg",
+        typeField: "#node-input-inputpath_type",
+        types: ["msg", "flow", "global"]
+    });
+
+    $("#node-input-outputpath").typedInput({ types: ["msg"] });
+}
+</script>
+
+<script type="text/javascript" template-section="onIncludeEditSave">
+</script>
+
+<script type="text/html" template-section="onIncludeEditForm">
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" />
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-inputpath"><i class="fa fa-sign-in"></i> Input</label>
+        <input type="text" id="node-input-inputpath" />
+        <input type="hidden" id="node-input-inputpath_type" />
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-outputpath"><i class="fa fa-sign-out"></i> Output</label>
+        <input type="text" id="node-input-outputpath" />
+    </div>
+</script>
+
+<script type="text/markdown" template-section="onIncludeDocumentation">
+Decodes a Prometheus text-format metrics payload into a structured JSON object.
+
+Related metrics (e.g. histogram buckets, sum, and count) are grouped under a single key. Labels are de-duplicated into a shared `tags` object.
+
+### Properties
+
+: *name*   (string) : Display label for this node.
+: *input*  (typed)  : The message property containing the Prometheus text payload (e.g. `msg.payload`).
+: *output* (msg)    : The message property to write the decoded JSON to (e.g. `msg.payload`).
+
+### Inputs
+
+: *msg* (any) : A message whose configured input property contains a Prometheus exposition-format text string.
+
+### Outputs
+
+: *msg* : The original message with the decoded metrics object written to the configured output property.
+
+### Output Format
+
+Each key in the output object is a metric name. The value is an object with the following fields:
+
+- **type** — the metric type (`counter`, `gauge`, `histogram`, `summary`, or `untyped`)
+- **help** — the HELP string from the payload
+- **tags** — an object of label key/value pairs (shared across related samples, excluding `le` and `quantile`)
+- **value** — the metric value (for counter, gauge, and untyped metrics)
+- **buckets** — bucket boundary to cumulative count mapping (for histograms)
+- **quantiles** — quantile to value mapping (for summaries)
+- **sum** — the `_sum` value (for histograms and summaries)
+- **count** — the `_count` value (for histograms and summaries)
+
+### Example
+
+Given a Prometheus payload:
+
+```
+# HELP http_duration_seconds Request duration
+# TYPE http_duration_seconds histogram
+http_duration_seconds_bucket{method="GET",le="0.1"} 24
+http_duration_seconds_bucket{method="GET",le="1"} 50
+http_duration_seconds_bucket{method="GET",le="+Inf"} 53
+http_duration_seconds_sum{method="GET"} 100.5
+http_duration_seconds_count{method="GET"} 53
+```
+
+The output will be:
+
+```json
+{
+  "http_duration_seconds": {
+    "type": "histogram",
+    "help": "Request duration",
+    "tags": { "method": "GET" },
+    "buckets": { "0.1": 24, "1": 50, "+Inf": 53 },
+    "sum": 100.5,
+    "count": 53
+  }
+}
+```
+
+### References
+- [Prometheus Exposition Format](https://prometheus.io/docs/instrumenting/exposition_formats/)
+</script>

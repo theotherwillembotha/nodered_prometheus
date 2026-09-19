@@ -1,0 +1,178 @@
+<script type="application/json" fragment-section="metaData">
+{ "label": "Prometheus Timer" }
+</script>
+
+<script type="text/html" fragment-section="onForm">
+    <div class="form-row">
+        <label class="towb_editorlabel" for="fragment-metricDescription"><i class="fa fa-info-circle"></i> Description</label>
+        <input class="towb_editorfield" type="text" id="fragment-metricDescription" placeholder="Optional metric description" />
+    </div>
+
+    <div class="form-row">
+        <label class="towb_editorlabel"><i class="fa fa-bar-chart"></i> Type</label>
+        <input type="text" id="fragment-metricType" />
+    </div>
+
+    <div class="fragment-metrictype fragment-metrictype-histogram">
+        <div class="form-row">
+            <label class="towb_editorlabel"><i class="fa fa-sliders"></i> Bucket Type</label>
+            <input type="text" id="fragment-buckettype" />
+        </div>
+
+        <div class="fragment-buckets fragment-buckets-default">
+            <span>Default bucket sizes: 0.001, 0.01, 0.1, 1, 2, 5 seconds</span>
+        </div>
+
+        <div class="fragment-buckets fragment-buckets-manual">
+            <div class="form-row">
+                <label class="towb_editorlabel"><i class="fa fa-sliders"></i> Buckets</label>
+                <input type="text" id="fragment-buckets-manual" placeholder="0.001, 0.01, 0.1, 1, 2, 5" />
+            </div>
+        </div>
+
+        <div class="fragment-buckets fragment-buckets-linear">
+            <div class="form-row">
+                <label class="towb_editorlabel"><i class="fa fa-sliders"></i> Start</label>
+                <input class="towb_editorfield_short" type="text" id="fragment-linear-start" placeholder="0" />
+            </div>
+            <div class="form-row">
+                <label class="towb_editorlabel"><i class="fa fa-sliders"></i> Interval</label>
+                <input class="towb_editorfield_short" type="text" id="fragment-linear-interval" placeholder="5" />
+            </div>
+            <div class="form-row">
+                <label class="towb_editorlabel"><i class="fa fa-sliders"></i> Count</label>
+                <input class="towb_editorfield_short" type="text" id="fragment-linear-count" placeholder="10" />
+            </div>
+        </div>
+
+        <div class="fragment-buckets fragment-buckets-exponential">
+            <div class="form-row">
+                <label class="towb_editorlabel"><i class="fa fa-sliders"></i> Start</label>
+                <input class="towb_editorfield_short" type="text" id="fragment-exp-start" placeholder="1" />
+            </div>
+            <div class="form-row">
+                <label class="towb_editorlabel"><i class="fa fa-sliders"></i> Factor</label>
+                <input class="towb_editorfield_short" type="text" id="fragment-exp-factor" placeholder="2" />
+            </div>
+            <div class="form-row">
+                <label class="towb_editorlabel"><i class="fa fa-sliders"></i> Count</label>
+                <input class="towb_editorfield_short" type="text" id="fragment-exp-count" placeholder="10" />
+            </div>
+        </div>
+    </div>
+
+    <div class="fragment-metrictype fragment-metrictype-summary">
+        <div class="form-row">
+            <label class="towb_editorlabel"><i class="fa fa-sliders"></i> Percentile Type</label>
+            <input type="text" id="fragment-percentiletype" />
+        </div>
+
+        <div class="fragment-percentiles fragment-percentiles-default">
+            <span>Default percentiles: [0.01, 0.1, 0.9, 0.99]</span>
+        </div>
+
+        <div class="fragment-percentiles fragment-percentiles-manual">
+            <div class="form-row">
+                <label class="towb_editorlabel"><i class="fa fa-sliders"></i> Percentiles</label>
+                <input type="text" id="fragment-percentiles-manual" placeholder="0.01, 0.1, 0.9, 0.99" />
+            </div>
+        </div>
+    </div>
+</script>
+
+<script type="text/javascript" fragment-section="onLoad">
+    var $c = $(container);
+
+    $c.find("#fragment-metricDescription").val(config.metricDescription || "");
+
+    // Metric type selector (histogram / summary)
+    var metricType = $c.find("#fragment-metricType");
+    metricType.typedInput({ type: "metricType", types: [{
+        value: "metricType",
+        options: [
+            { value: "histogram", label: "Histogram" },
+            { value: "summary",   label: "Summary" }
+        ]
+    }]});
+    metricType.typedInput("value", config.metricType || "histogram");
+
+    function selectMetricType(val) {
+        $c.find(".fragment-metrictype").hide();
+        $c.find(".fragment-metrictype-" + val).show();
+    }
+    metricType.on("change", function() { selectMetricType(metricType.typedInput("value")); });
+    selectMetricType(metricType.typedInput("value"));
+
+    // Bucket type selector
+    var bucketType = $c.find("#fragment-buckettype");
+    bucketType.typedInput({ type: "buckettype", types: [{
+        value: "buckettype",
+        options: [
+            { value: "default",      label: "Default" },
+            { value: "manual",       label: "Manual" },
+            { value: "linear",       label: "Linear" },
+            { value: "exponential",  label: "Exponential" }
+        ]
+    }]});
+    bucketType.typedInput("value", config.bucketType || "default");
+
+    function selectBucketType(val) {
+        $c.find(".fragment-buckets").hide();
+        $c.find(".fragment-buckets-" + val).show();
+    }
+    bucketType.on("change", function() { selectBucketType(bucketType.typedInput("value")); });
+    selectBucketType(bucketType.typedInput("value"));
+
+    // Populate bucket fields
+    $c.find("#fragment-buckets-manual").val(config.bucketsManual || "0.001, 0.01, 0.1, 1, 2, 5");
+    $c.find("#fragment-linear-start").val(config.linearStart || "0");
+    $c.find("#fragment-linear-interval").val(config.linearInterval || "5");
+    $c.find("#fragment-linear-count").val(config.linearCount || "10");
+    $c.find("#fragment-exp-start").val(config.expStart || "1");
+    $c.find("#fragment-exp-factor").val(config.expFactor || "2");
+    $c.find("#fragment-exp-count").val(config.expCount || "10");
+
+    // Percentile type selector
+    var percentileType = $c.find("#fragment-percentiletype");
+    percentileType.typedInput({ type: "percentiletype", types: [{
+        value: "percentiletype",
+        options: [
+            { value: "default", label: "Default" },
+            { value: "manual",  label: "Manual" }
+        ]
+    }]});
+    percentileType.typedInput("value", config.percentileType || "default");
+
+    function selectPercentileType(val) {
+        $c.find(".fragment-percentiles").hide();
+        $c.find(".fragment-percentiles-" + val).show();
+    }
+    percentileType.on("change", function() { selectPercentileType(percentileType.typedInput("value")); });
+    selectPercentileType(percentileType.typedInput("value"));
+
+    $c.find("#fragment-percentiles-manual").val(config.percentilesManual || "0.01, 0.1, 0.9, 0.99");
+</script>
+
+<script type="text/javascript" fragment-section="onSave">
+    var $c = $(container);
+    return {
+        metricDescription: $c.find("#fragment-metricDescription").val(),
+        metricType:        $c.find("#fragment-metricType").typedInput("value"),
+        bucketType:        $c.find("#fragment-buckettype").typedInput("value"),
+        bucketsManual:     $c.find("#fragment-buckets-manual").val(),
+        linearStart:       $c.find("#fragment-linear-start").val(),
+        linearInterval:    $c.find("#fragment-linear-interval").val(),
+        linearCount:       $c.find("#fragment-linear-count").val(),
+        expStart:          $c.find("#fragment-exp-start").val(),
+        expFactor:         $c.find("#fragment-exp-factor").val(),
+        expCount:          $c.find("#fragment-exp-count").val(),
+        percentileType:    $c.find("#fragment-percentiletype").typedInput("value"),
+        percentilesManual: $c.find("#fragment-percentiles-manual").val()
+    };
+</script>
+
+<script type="text/javascript" fragment-section="onReplace">
+</script>
+
+<script type="text/javascript" fragment-section="onDestroy">
+</script>
