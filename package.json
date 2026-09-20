@@ -1,6 +1,6 @@
 {
   "name": "@theotherwillembotha/node-red-prometheus",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Prometheus metrics provider plugin for node-red-plugincore.",
   "author": "Willem Botha (@theotherwillembotha)",
   "license": "ISC",
@@ -35,7 +35,7 @@
     "nodered": ">=4.0.0"
   },
   "dependencies": {
-    "@theotherwillembotha/node-red-plugincore": "^0.4.1"
+    "@theotherwillembotha/node-red-plugincore": "^0.4.2"
   },
   "devDependencies": {
     "@theotherwillembotha/node-red-plugincore": "../nodered_plugincore",
