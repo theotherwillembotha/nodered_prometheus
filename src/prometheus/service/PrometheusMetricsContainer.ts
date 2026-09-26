@@ -304,7 +304,6 @@ export class PrometheusMetricsContainer extends MetricsContainer {
         if (fragmentData.metricType === 'summary') {
             const summaryConfig: SummaryMetricConfig = {
                 ...metricConfig,
-                type: "Summary",
                 percentileType:   fragmentData.percentileType || PercentileType.default,
                 percentileConfig: fragmentData.percentileType === PercentileType.manual
                     ? { percentiles: (fragmentData.percentilesManual || "0.01, 0.1, 0.9, 0.99").split(",").map((s: string) => parseFloat(s.trim())) }
@@ -332,7 +331,6 @@ export class PrometheusMetricsContainer extends MetricsContainer {
 
         const histogramConfig: HistogramMetricConfig = {
             ...metricConfig,
-            type: "Histogram",
             buckettype:   (fragmentData.bucketType as BucketType) || BucketType.default,
             bucketconfig: bucketConfig,
         };
